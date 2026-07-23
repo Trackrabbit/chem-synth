@@ -40,3 +40,5 @@ const InventoryPanel = ({ inventory, selectItem, slot1, slot2 }) => (
     </div>
   </div>
 );
+
+export default InventoryPanel;

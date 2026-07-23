@@ -27,3 +27,5 @@ const ResetModal = ({ show, onClose, onConfirm, isResetting }) => {
     </div>
   );
 };
+
+export default ResetModal;

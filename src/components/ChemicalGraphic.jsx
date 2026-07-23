@@ -25,3 +25,5 @@ const ChemicalGraphic = ({ color, type, size = "md" }) => {
     </div>
   );
 };
+
+export default ChemicalGraphic;

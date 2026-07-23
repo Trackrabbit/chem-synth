@@ -33,3 +33,5 @@ const Header = ({ audioEnabled, setAudioEnabled, setShowResetModal }) => (
     </div>
   </header>
 );
+
+export default Header;

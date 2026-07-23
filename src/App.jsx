@@ -4,11 +4,12 @@ import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, onSnapshot, doc, setDoc, getDocs, deleteDoc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 
-// Import your newly extracted components
 import Header from './components/Header';
 import Workbench from './components/Workbench';
 import InventoryPanel from './components/InventoryPanel';
 import ResetModal from './components/ResetModal';
+import DiscoveryModal from './components/DiscoveryModal';
+import RecipeLog from './components/RecipeLog';
 
 const firebaseConfig = {
   apiKey: "AIzaSyC9-p5CHbJXPgm6NoE73GfGriS2AtQXl0c",
@@ -24,7 +25,7 @@ const auth = getAuth(app);
 const db = getFirestore(app);
 
 export default function App() {
-  // Global State
+
   const [user, setUser] = useState(null);
   const [inventory, setInventory] = useState([]);
   const [slot1, setSlot1] = useState(null);
@@ -34,14 +35,17 @@ export default function App() {
   const [errorMsg, setErrorMsg] = useState("");
   const [audioEnabled, setAudioEnabled] = useState(true);
   
-  // Visual Effects State
   const [particles, setParticles] = useState([]);
   const [isFlashing, setIsFlashing] = useState(false);
   const [shockwaveColor, setShockwaveColor] = useState(null);
   
-  // Modal State
   const [showResetModal, setShowResetModal] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+
+  const [showDiscovery, setShowDiscovery] = useState(false);
+  const [discoveredElement, setDiscoveredElement] = useState(null);
+
+  const [showRecipeLog, setShowRecipeLog] = useState(false);
 
   const playSound = (type) => {
     if (!audioEnabled) return;
@@ -90,11 +94,12 @@ export default function App() {
   }, [user]);
 
   const seedInitialElements = async (uid) => {
+    
     const starters = [
-      { id: 'water', name: 'Water', color: '#3b82f6', type: 'liquid' },
-      { id: 'fire', name: 'Fire', color: '#ef4444', type: 'gas' },
-      { id: 'earth', name: 'Earth', color: '#854d0e', type: 'solid' },
-      { id: 'air', name: 'Air', color: '#e2e8f0', type: 'gas' }
+      { id: 'water', name: 'Water', color: '#3b82f6', type: 'liquid', emoji: '💧', tier: 1 },
+      { id: 'fire', name: 'Fire', color: '#ef4444', type: 'gas', emoji: '🔥', tier: 1 },
+      { id: 'earth', name: 'Earth', color: '#854d0e', type: 'solid', emoji: '🪨', tier: 1 },
+      { id: 'air', name: 'Air', color: '#e2e8f0', type: 'gas', emoji: '💨', tier: 1 }
     ];
     const inventoryRef = collection(db, 'users', uid, 'chemicals');
     for (const item of starters) await setDoc(doc(inventoryRef, item.id), item);
@@ -131,21 +136,33 @@ export default function App() {
       const alreadyExists = inventory.some(item => item.id === result.id);
       
       if (!alreadyExists) {
-        await setDoc(doc(db, 'users', user.uid, 'chemicals', result.id), result);
+
+        const elementToSave = {
+          ...result,
+          parents: [
+            { name: slot1.name, emoji: slot1.emoji || '✨' },
+            { name: slot2.name, emoji: slot2.emoji || '✨' }
+          ]
+        };
+      
+        await setDoc(doc(db, 'users', user.uid, 'chemicals', result.id), elementToSave);
+        
+        setDiscoveredElement(elementToSave);
+        setShowDiscovery(true);
       }
 
-      playSound('success');
-      spawnExplosion(result.color);
-      setLastResult({ ...result, isNew: !alreadyExists });
-      setSlot1(null); setSlot2(null);
-    } catch (error) {
-      console.error(error);
-      playSound('fail');
-      setErrorMsg(error.message);
-    } finally {
-      setIsMixing(false);
-    }
-  };
+        playSound('success');
+        spawnExplosion(result.color);
+        setLastResult({ ...result, isNew: !alreadyExists });
+        setSlot1(null); setSlot2(null);
+      } catch (error) {
+        console.error(error);
+        playSound('fail');
+        setErrorMsg(error.message);
+      } finally {
+        setIsMixing(false);
+      }
+    };
 
   const spawnExplosion = (colorHex) => {
     setShockwaveColor(colorHex);
@@ -191,6 +208,7 @@ export default function App() {
         audioEnabled={audioEnabled} 
         setAudioEnabled={setAudioEnabled} 
         setShowResetModal={setShowResetModal} 
+        onOpenRecipeLog={() => setShowRecipeLog(true)}
       />
 
       <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-8 relative z-10">
@@ -219,6 +237,18 @@ export default function App() {
         onClose={() => setShowResetModal(false)} 
         onConfirm={handleReset} 
         isResetting={isResetting} 
+      />
+
+      <DiscoveryModal 
+        isVisible={showDiscovery} 
+        newElement={discoveredElement} 
+        onClose={() => setShowDiscovery(false)} 
+      />
+
+      <RecipeLog 
+        isVisible={showRecipeLog} 
+        inventory={inventory} 
+        onClose={() => setShowRecipeLog(false)} 
       />
       
       <div className={`fixed inset-0 bg-white pointer-events-none z-[100] transition-opacity duration-150 ${isFlashing ? 'opacity-80' : 'opacity-0'}`} />

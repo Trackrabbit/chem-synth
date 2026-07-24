@@ -16,8 +16,8 @@ const DiscoveryModal = ({ isVisible, newElement, onClose }) => {
         {/* Background ambient glow */}
         <div className="absolute inset-0 rounded-2xl bg-indigo-500 opacity-20 blur-2xl"></div>
         
-        <h2 className="z-10 text-2xl font-bold tracking-widest text-indigo-300 mb-6 uppercase">
-          Synthesis Successful
+        <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 mb-6 drop-shadow-lg uppercase tracking-widest">
+          {newElement.isEureka ? "Eureka! Variant Found!" : "New Discovery!"}
         </h2>
         
         {/* Element Icon/Graphic Container */}

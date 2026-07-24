@@ -10,6 +10,7 @@ import InventoryPanel from './components/InventoryPanel';
 import ResetModal from './components/ResetModal';
 import DiscoveryModal from './components/DiscoveryModal';
 import RecipeLog from './components/RecipeLog';
+import DuplicateModal from './components/DuplicateModal';
 
 const firebaseConfig = {
   apiKey: "AIzaSyC9-p5CHbJXPgm6NoE73GfGriS2AtQXl0c",
@@ -46,6 +47,9 @@ export default function App() {
   const [discoveredElement, setDiscoveredElement] = useState(null);
 
   const [showRecipeLog, setShowRecipeLog] = useState(false);
+
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [knownDuplicate, setKnownDuplicate] = useState(null);
 
   const playSound = (type) => {
     if (!audioEnabled) return;
@@ -127,16 +131,47 @@ export default function App() {
     return resultData;
   };
 
-  const handleMix = async () => {
+  const findKnownResult = (itemA, itemB) => {
+    return inventory.find(item => {
+
+      if (!item.parents || item.parents.length !== 2) return false;
+      
+      const p1 = item.parents[0].name;
+      const p2 = item.parents[1].name;
+      
+      return (p1 === itemA.name && p2 === itemB.name) || (p1 === itemB.name && p2 === itemA.name);
+    });
+  };
+
+const handleMix = () => {
     if (!slot1 || !slot2 || !user) return;
+    const existingResult = findKnownResult(slot1, slot2);
+    
+    if (existingResult) {
+      setKnownDuplicate(existingResult);
+      setShowDuplicateModal(true);
+    } else {
+      executeMix();
+    }
+  };
+
+  const executeMix = async (rerollingItem = null) => {
+    setShowDuplicateModal(false);
     setIsMixing(true); setLastResult(null); setErrorMsg(""); playSound('bubble');
     
     try {
       const result = await callAIAPI(slot1, slot2);
+      
+      if (rerollingItem && result.id === rerollingItem.id) {
+        playSound('fail');
+        setErrorMsg(`In a flash of brilliance you have wasted ${slot1.name} and ${slot2.name} to make more ${result.name}.`);
+        setSlot1(null); setSlot2(null);
+        return;
+      }
+
       const alreadyExists = inventory.some(item => item.id === result.id);
       
       if (!alreadyExists) {
-
         const elementToSave = {
           ...result,
           parents: [
@@ -147,22 +182,37 @@ export default function App() {
       
         await setDoc(doc(db, 'users', user.uid, 'chemicals', result.id), elementToSave);
         
-        setDiscoveredElement(elementToSave);
+        setDiscoveredElement({ ...elementToSave, isEureka: !!rerollingItem });
         setShowDiscovery(true);
       }
 
-        playSound('success');
-        spawnExplosion(result.color);
-        setLastResult({ ...result, isNew: !alreadyExists });
-        setSlot1(null); setSlot2(null);
-      } catch (error) {
-        console.error(error);
-        playSound('fail');
-        setErrorMsg(error.message);
-      } finally {
-        setIsMixing(false);
-      }
-    };
+      playSound('success');
+      spawnExplosion(result.color);
+      setLastResult({ ...result, isNew: !alreadyExists });
+      setSlot1(null); setSlot2(null);
+    } catch (error) {
+      console.error(error);
+      playSound('fail');
+      setErrorMsg(error.message);
+    } finally {
+      setIsMixing(false);
+    }
+  };
+
+  const executeInstantMix = () => {
+    setShowDuplicateModal(false);
+    setIsMixing(true);
+    playSound('bubble');
+    
+    setTimeout(() => {
+      playSound('success');
+      spawnExplosion(knownDuplicate.color);
+      setLastResult({ ...knownDuplicate, isNew: false });
+      setSlot1(null); 
+      setSlot2(null);
+      setIsMixing(false);
+    }, 600);
+  };
 
   const spawnExplosion = (colorHex) => {
     setShockwaveColor(colorHex);
@@ -249,6 +299,13 @@ export default function App() {
         isVisible={showRecipeLog} 
         inventory={inventory} 
         onClose={() => setShowRecipeLog(false)} 
+      />
+
+      <DuplicateModal 
+        isOpen={showDuplicateModal}
+        knownResult={knownDuplicate}
+        onCancel={() => setShowDuplicateModal(false)}
+        onConfirm={() => executeMix(knownDuplicate)}
       />
       
       <div className={`fixed inset-0 bg-white pointer-events-none z-[100] transition-opacity duration-150 ${isFlashing ? 'opacity-80' : 'opacity-0'}`} />

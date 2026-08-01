@@ -2,57 +2,56 @@
   {
     "id": "water",
     "name": "Water",
-    "lore": "Not merely liquid, but the collective memory of all things that have dissolved since the dawn of time. It tastes of salt and ancient rain, and it is said that if you listen closely to a deep pool, it will whisper the names of those who were drowned by its kindness.",
+    "emoji": "💧",
+    "color": "#3b82f6",
+    "type": "liquid",
+    "tier": 1,
+    "lore": "Not merely liquid, but the collective memory of all things that have dissolved since the dawn of time.",
     "properties": "Hydro-affinity, memory-retention, soul-solvent.",
     "usage": "Essential for binding volatile spirits; the only substance capable of diluting the bitterness of forbidden truths."
   },
   {
     "id": "fire",
     "name": "Fire",
-    "lore": "The hunger that refuses to be sated. It does not 'create'—it merely transitions matter from form to ash. To hold it is to hold a dying star in your palm. Beware, for it has a personality; it likes to dance, and it likes to bite.",
+    "emoji": "🔥",
+    "color": "#ef4444",
+    "type": "gas",
+    "tier": 1,
+    "lore": "The hunger that refuses to be sated. It does not 'create'—it merely transitions matter from form to ash.",
     "properties": "Pyric, catalytic, transformation-obsessed.",
     "usage": "Required for extraction processes. Keep it contained, or it will attempt to extract the soul from the beaker."
   },
   {
     "id": "earth",
     "name": "Earth",
-    "lore": "The slow, slumbering giant. It contains the echoes of everything that has ever fallen upon it, pressing history into dense, unyielding layers. It is the only element that listens, though it rarely speaks.",
+    "emoji": "🪨",
+    "color": "#854d0e",
+    "type": "solid",
+    "tier": 1,
+    "lore": "The slow, slumbering giant. It contains the echoes of everything that has ever fallen upon it.",
     "properties": "Mineral-affinity, gravitational, stubborn.",
     "usage": "The ultimate stabilizing agent. When your mixture threatens to tear reality apart, bury it in Earth."
   },
   {
     "id": "air",
     "name": "Air",
-    "lore": "The thin veil between sanity and delirium. It carries the voices of those who have passed into the slipstream. It is constantly trying to escape, to return to the void where it began.",
+    "emoji": "💨",
+    "color": "#e2e8f0",
+    "type": "gas",
+    "tier": 1,
+    "lore": "The thin veil between sanity and delirium. It carries the voices of those who have passed into the slipstream.",
     "properties": "Ethereal, transient, conductive.",
     "usage": "Used to refine textures and accelerate the onset of reactions. Often used by seers to clear their own minds."
   },
   {
     "id": "steam",
     "name": "Steam",
-    "lore": "The ghost of a transition. It is what remains when Fire has finished its work with Water. It is the language of secrets, dissipating into nothingness before the truth can be fully formed in your mind.",
+    "emoji": "☁️",
+    "color": "#f1f5f9",
+    "type": "gas",
+    "tier": 2,
+    "lore": "The ghost of a transition. It is what remains when Fire has finished its work with Water.",
     "properties": "Obscuring, humid, fleeting.",
-    "usage": "Used to distill pure essences from coarse matter; also used as a shroud to hide one's work from prying eyes."
-  },
-  {
-    "id": "mud",
-    "name": "Mud",
-    "lore": "The womb of chaos. A messy, desperate union of Water's fluidity and Earth's stubbornness. It is the base layer of reality, the substance from which all life is carved and to which all life must eventually return.",
-    "properties": "Malleable, absorbent, viscous.",
-    "usage": "Used to create seals for alchemical jars and to craft crude vessels that can withstand high temperatures."
-  },
-  {
-    "id": "lava",
-    "name": "Lava",
-    "lore": "The world’s weeping wound. It is the planet’s blood, seething with the raw, unrefined heat of creation. Do not stare into it too long, for it remembers the fire of the dawn of time, and it wants to share that heat with you.",
-    "properties": "Crystalline, intense, aggressive.",
-    "usage": "Required for transmuting base metals into gold. It requires a vessel made of reinforced obsidian, or it will eat through your laboratory bench."
-  },
-  {
-    "id": "dust",
-    "name": "Dust",
-    "lore": "The pulverized history of empires. It is the final form of all things. When you touch it, you touch the end of a million stories. It is the weight of silence in an empty room.",
-    "properties": "Desiccating, blinding, ancient.",
-    "usage": "Used in invisibility draughts—if you become as small and insignificant as dust, the world will forget to look at you."
+    "usage": "Used to distill pure essences from coarse matter."
   }
 ]

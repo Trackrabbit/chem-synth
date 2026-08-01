@@ -112,6 +112,7 @@ export default function App() {
 
   const getLabNotes = (item, mode) => {
     if (mode === 'fantasy') return alchemyData.find(note => note.id === item.id) || null;
+    if (mode === 'chemistry') return periodicTableData.find(note => note.id === item.id) || null;
     return null;
   };
 
@@ -144,13 +145,18 @@ export default function App() {
   }, [user, appMode]);
 
   const seedInitialElements = async (uid, mode) => {
-      const starters = mode === 'fantasy' 
-        ? [{ id: 'water', name: 'Water', color: '#3b82f6', type: 'liquid', emoji: '💧', tier: 1 }, { id: 'fire', name: 'Fire', color: '#ef4444', type: 'gas', emoji: '🔥', tier: 1 }, { id: 'earth', name: 'Earth', color: '#854d0e', type: 'solid', emoji: '🪨', tier: 1 }, { id: 'air', name: 'Air', color: '#e2e8f0', type: 'gas', emoji: '💨', tier: 1 }]
-        : [{ id: 'hydrogen', name: 'Hydrogen', formula: 'H2', molarMass: '2.016', state: 'gas', color: '#94a3b8', emoji: '⚛️', tier: 1 }, { id: 'oxygen', name: 'Oxygen', formula: 'O2', molarMass: '31.999', state: 'gas', color: '#7dd3fc', emoji: '💨', tier: 1 }, { id: 'carbon', name: 'Carbon', formula: 'C', molarMass: '12.011', state: 'solid', color: '#334155', emoji: '🪨', tier: 1 }, { id: 'sodium', name: 'Sodium', formula: 'Na', molarMass: '22.990', state: 'solid', color: '#cbd5e1', emoji: '🧊', tier: 1 }, { id: 'chlorine', name: 'Chlorine', formula: 'Cl2', molarMass: '70.90', state: 'gas', color: '#bef264', emoji: '🧪', tier: 1 }];
+      const starterIds = mode === 'fantasy' 
+        ? ['water', 'fire', 'earth', 'air'] 
+        : ['hydrogen', 'oxygen', 'carbon', 'sodium', 'chlorine'];
+        
       const inventoryRef = collection(db, 'users', uid, getDbPath(mode));
-      for (const item of starters) {
-        const notes = (mode === 'fantasy') ? (alchemyData.find(n => n.id === item.id) || {}) : {};
-        await setDoc(doc(inventoryRef, item.id), { ...item, ...notes });
+      const sourceData = mode === 'fantasy' ? alchemyData : periodicTableData;
+      
+      for (const id of starterIds) {
+        const element = sourceData.find(item => item.id === id);
+        if (element) {
+          await setDoc(doc(inventoryRef, id), element);
+        }
       }
     };
 

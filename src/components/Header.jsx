@@ -1,5 +1,5 @@
 import React from 'react';
-import { FlaskConical, RefreshCw, Volume2, VolumeX, BookOpen, Sparkles, Beaker, Library, HelpCircle } from 'lucide-react';
+import { FlaskConical, RefreshCw, Volume2, VolumeX, BookOpen, Sparkles, Beaker, Library, HelpCircle, Share2 } from 'lucide-react';
 import { useLab } from '../context/LabProvider';
 
 const Header = ({ audioEnabled, setAudioEnabled, setShowResetModal, onOpenRecipeLog, setShowHelp }) => {
@@ -15,6 +15,23 @@ const Header = ({ audioEnabled, setAudioEnabled, setShowResetModal, onOpenRecipe
     if (appMode === 'fantasy') return 'text-purple-400';
     if (appMode === 'sandbox') return 'text-amber-400';
     return 'text-emerald-400';
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'ChemSynth Engine',
+          text: 'Check out this chemical synthesis lab I built!',
+          url: window.location.href,
+        });
+      } catch (err) {
+        console.log('Error sharing:', err);
+      }
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      alert('Link copied to clipboard!');
+    }
   };
 
   return (
@@ -61,6 +78,13 @@ const Header = ({ audioEnabled, setAudioEnabled, setShowResetModal, onOpenRecipe
       
       {/* Right Side: Action Buttons */}
       <div className="flex items-center gap-2 w-full md:w-auto justify-center md:justify-end">
+        <button 
+          onClick={handleShare}
+          className="text-slate-400 hover:text-white transition-colors p-2 hover:bg-slate-800 rounded-xl border border-transparent hover:border-slate-700"
+          title="Share this lab"
+        >
+          <Share2 className="w-5 h-5" />
+        </button>
         <button 
           onClick={() => setShowHelp(true)} 
           className="text-slate-400 hover:text-emerald-400 transition-colors p-2 hover:bg-emerald-500/10 rounded-xl border border-transparent hover:border-emerald-500/20"

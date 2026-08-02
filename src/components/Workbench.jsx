@@ -30,6 +30,7 @@ const Workbench = ({
   } = useLab();
 
   // Mode helpers
+  const iconColor = appMode === 'fantasy' ? 'text-purple-400' : appMode === 'sandbox' ? 'text-amber-400' : 'text-emerald-400';
   const modeColor = appMode === 'sandbox' ? 'amber' : appMode === 'fantasy' ? 'purple' : 'emerald';
   const hoverClass = appMode === 'fantasy' ? 'hover:bg-purple-900/50 hover:border-purple-500' : 
                      appMode === 'sandbox' ? 'hover:bg-amber-900/50 hover:border-amber-500' : 
@@ -71,7 +72,7 @@ const Workbench = ({
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-semibold flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-amber-400"/> Synthesis Bench
+            <Sparkles className={`w-5 h-5 ${iconColor}`} />Synthesis Bench
           </h2>
           
           <div className="flex gap-2 items-center">

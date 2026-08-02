@@ -26,6 +26,7 @@ const InventoryPanel = ({ inventory, selectItem, searchInputRef, pinnedIntermedi
 
   const activePinClass = appMode === 'fantasy' ? 'text-purple-400 bg-purple-500/10' : appMode === 'sandbox' ? 'text-amber-400 bg-amber-500/10' : 'text-emerald-400 bg-emerald-500/10';
   const hoverPinClass = appMode === 'fantasy' ? 'hover:bg-purple-600' : appMode === 'sandbox' ? 'hover:bg-amber-600' : 'hover:bg-emerald-600';
+  const iconColor = appMode === 'fantasy' ? 'text-purple-400' : appMode === 'sandbox' ? 'text-amber-400' : 'text-emerald-400';
 
   const filteredInventory = useMemo(() => {
     return inventory.filter(item =>
@@ -54,7 +55,7 @@ const InventoryPanel = ({ inventory, selectItem, searchInputRef, pinnedIntermedi
           {appMode === 'chemistry' ? (
             <><FlaskConical className="w-5 h-5 text-emerald-400 shrink-0" /> Lab Inventory</>
           ) : (
-            <><BookOpen className="w-5 h-5 text-amber-400 shrink-0" /> Elements</>
+            <><BookOpen className={`w-5 h-5 ${iconColor} shrink-0`} /> Elements</>
           )}
         </h2>
         
@@ -104,8 +105,10 @@ const InventoryPanel = ({ inventory, selectItem, searchInputRef, pinnedIntermedi
               return (
                 <div
                   key={item.id}
+                  role="button"
+                  tabIndex="0"
                   onClick={() => selectItem(item)}
-                  className={`flex items-center justify-between p-2.5 rounded-xl border-2 transition-all duration-300 w-full group text-left cursor-pointer
+                  className={`flex items-center justify-between p-2.5 rounded-xl border-2 transition-all duration-300 w-full cursor-pointer group text-left
                     ${isSelected ? 'border-emerald-500 bg-emerald-500/10' : 'border-slate-800 bg-slate-950 hover:border-slate-600 hover:bg-slate-800/50'}`}
                 >
                   <div className="flex items-center gap-3 overflow-hidden">
@@ -146,6 +149,8 @@ const InventoryPanel = ({ inventory, selectItem, searchInputRef, pinnedIntermedi
             return (
               <div
                 key={item.id}
+                role="button"
+                tabIndex="0"
                 onClick={() => selectItem(item)}
                 className={`flex flex-col items-center p-3 rounded-xl border-2 transition-all duration-300 relative group w-full h-full min-h-[220px] overflow-hidden cursor-pointer
                   ${isSelected ? 'border-emerald-500 bg-emerald-500/10 shadow-[0_0_15px_rgba(16,185,129,0.2)]' : 'border-slate-800 bg-slate-950 hover:border-slate-600 hover:bg-slate-800/50'}`}

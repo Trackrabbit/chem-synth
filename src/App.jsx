@@ -200,8 +200,18 @@ export default function App() {
         const res = await fetch(import.meta.env.VITE_WORKER_URL, { 
           method: 'POST', 
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ itemA: slot1, itemB: slot2, qtyA: slot1Qty, qtyB: slot2Qty, environment: { heat: applyHeat, pressure: applyPressure }, mode: appMode, includeLore: appMode === 'fantasy' })
+          body: JSON.stringify({ 
+            itemA: slot1, 
+            itemB: slot2, 
+            qtyA: slot1Qty, 
+            qtyB: slot2Qty, 
+            environment: { heat: applyHeat, pressure: applyPressure }, 
+            mode: appMode, 
+            includeLore: appMode === 'fantasy',
+            ...(appMode === 'fantasy' && { objective: "In Fantasy mode, prioritize the discovery of new lifeforms, including alien life, when the combination allows." })
+          })
         });
+
         result = await res.json();
         
         if (!result || !result.name) {

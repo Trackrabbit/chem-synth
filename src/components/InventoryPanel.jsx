@@ -112,9 +112,13 @@ const InventoryPanel = ({ inventory, selectItem, searchInputRef, pinnedIntermedi
                     ${isSelected ? 'border-emerald-500 bg-emerald-500/10' : 'border-slate-800 bg-slate-950 hover:border-slate-600 hover:bg-slate-800/50'}`}
                 >
                   <div className="flex items-center gap-3 overflow-hidden">
-                     <div className="w-8 h-8 shrink-0 flex items-center justify-center transform transition-transform group-hover:scale-110">
-                       <ChemicalGraphic color={item.color} type={item.type || item.state} size="sm" />
-                     </div>
+                    <div className="w-8 h-8 shrink-0 flex items-center justify-center transform transition-transform group-hover:scale-110">
+                      {appMode === 'fantasy' ? (
+                        <span className="text-xl">{item.emoji}</span>
+                      ) : (
+                        <ChemicalGraphic color={item.color} type={item.type || item.state} size="sm" />
+                      )}
+                    </div>
                      <div className="flex flex-col truncate">
                        <span className="text-sm font-bold text-slate-200 truncate">{item.name}</span>
                        {appMode === 'chemistry' && item.formula ? (
@@ -173,7 +177,11 @@ const InventoryPanel = ({ inventory, selectItem, searchInputRef, pinnedIntermedi
                 </button>
 
                 <div className="mt-6 transition-transform duration-300 group-hover:scale-110 group-hover:-translate-y-1 shrink-0">
-                  <ChemicalGraphic color={item.color} type={item.type || item.state} size="sm" />
+                  {appMode === 'fantasy' ? (
+                    <span className="text-5xl">{item.emoji}</span>
+                  ) : (
+                    <ChemicalGraphic color={item.color} type={item.type || item.state} size="sm" />
+                  )}
                 </div>
                 
                 <div className="flex-1 flex items-center justify-center w-full my-2">

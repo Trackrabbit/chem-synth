@@ -130,7 +130,7 @@ const Footer = () => {
       ))}
 
       {ugaModeActive && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none">
           <h1 className="text-6xl md:text-8xl font-black text-red-600 uppercase tracking-widest drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)]" style={{ WebkitTextStroke: '3px #171717', animation: 'dawgBounce 0.5s ease-in-out infinite' }}>GO DAWGS!</h1>
         </div>
       )}

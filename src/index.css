@@ -17,21 +17,28 @@
   --scrollbar-thumb: rgba(186, 12, 47, 0.3);
   --scrollbar-thumb-hover: rgba(186, 12, 47, 0.6);
 }
-
 /* 3. Scoped Dynamic Theme Overrides */
-/* These only take effect when .theme-uga is present in the hierarchy */
 
+/* --- Emerald (Discovery) --- */
 .theme-uga .border-emerald-500 { border-color: var(--accent-primary) !important; }
 .theme-uga .bg-emerald-600 { background-color: var(--accent-primary) !important; }
 .theme-uga .bg-emerald-500\/10 { background-color: color-mix(in srgb, var(--accent-primary), transparent 90%) !important; }
 .theme-uga .text-emerald-400 { color: var(--accent-primary) !important; }
 
+/* --- Amber (Sandbox) --- */
 .theme-uga .border-amber-500 { border-color: var(--accent-primary) !important; }
 .theme-uga .bg-amber-600 { background-color: var(--accent-primary) !important; }
+.theme-uga .bg-amber-500\/10 { background-color: color-mix(in srgb, var(--accent-primary), transparent 90%) !important; }
 .theme-uga .text-amber-400 { color: var(--accent-primary) !important; }
 
+/* --- Indigo (Fantasy) --- */
+.theme-uga .border-purple-500 { border-color: var(--accent-primary) !important; }
+.theme-uga .bg-purple-600 { background-color: var(--accent-primary) !important; }
+.theme-uga .bg-purple-500\/10 { background-color: color-mix(in srgb, var(--accent-primary), transparent 90%) !important; }
+.theme-uga .text-purple-400 { color: var(--accent-primary) !important; }
+.theme-uga .text-indigo-400 { color: var(--accent-primary) !important; }
+
 /* 4. Scrollbar Styles using Variables */
-/* These automatically pick up the variable defined in :root or .theme-uga */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
 }

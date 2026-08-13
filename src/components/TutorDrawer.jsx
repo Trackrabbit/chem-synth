@@ -7,18 +7,63 @@ const TutorDrawer = ({ isOpen, onClose, workbenchState }) => {
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
+  const [isDirectMode, setIsDirectMode] = useState(false);
   
+  // Track the last seen workbench state signature
+  const lastBenchStateRef = useRef(null);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatHistory, isTyping]);
+
+  // Create a quick string fingerprint of the current bench
+  const getBenchSignature = (state) => {
+    if (!state) return '';
+    return `${state.slotA?.id || 'empty'}-${state.slotB?.id || 'empty'}-${state.isHeatApplied}-${state.isPressureApplied}`;
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const currentSignature = getBenchSignature(workbenchState);
+
+    // If the drawer just opened OR the bench components/factors changed, prompt the tutor
+    if (lastBenchStateRef.current !== currentSignature) {
+      lastBenchStateRef.current = currentSignature;
+      handleContextualPrompt(workbenchState);
+    }
+  }, [isOpen, workbenchState]);
+
+  const handleContextualPrompt = async (currentBench) => {
+    setIsTyping(true);
+    try {
+      const response = await fetch('https://chem-synth-worker.ajamespage.workers.dev/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'tutor',
+          workbenchContext: currentBench,
+          studentMessage: "Look at my current workbench state. Greet me or note the change in my setup, and ask an insightful opening question about what I'm trying to achieve.",
+          isDirectMode: isDirectMode
+        }),
+      });
+
+      if (!response.ok) throw new Error('Network response was not ok');
+      const data = await response.json();
+      addMessage('tutor', data.text);
+    } catch (error) {
+      console.error("Tutor Context Error:", error);
+      addMessage('tutor', "I see your bench setup has changed. What are we working on now?");
+    } finally {
+      setIsTyping(false);
+    }
+  };
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
 
     const userText = inputValue;
-    
-    // 1. Add user message to global context
     addMessage('user', userText);
     setInputValue('');
     setIsTyping(true);
@@ -30,15 +75,13 @@ const TutorDrawer = ({ isOpen, onClose, workbenchState }) => {
         body: JSON.stringify({
           mode: 'tutor',
           workbenchContext: workbenchState,
-          studentMessage: userText
+          studentMessage: userText,
+          isDirectMode: isDirectMode
         }),
       });
 
       if (!response.ok) throw new Error('Network response was not ok');
-
       const data = await response.json();
-      
-      // 2. Add tutor response to global context
       addMessage('tutor', data.text);
     } catch (error) {
       console.error("Tutor Error:", error);
@@ -63,12 +106,28 @@ const TutorDrawer = ({ isOpen, onClose, workbenchState }) => {
           <div>
             <h2 className="font-bold text-white tracking-wide">Chem Lab Tutor</h2>
             <p className="text-xs text-emerald-400/80 flex items-center gap-1">
-              <Sparkles className="w-3 h-3" /> Socratic Mode Active
+              <Sparkles className="w-3 h-3" /> {isDirectMode ? "Direct Knowledge Mode" : "Socratic Mode Active"}
             </p>
           </div>
         </div>
         <button onClick={onClose} className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors">
           <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Tutor Style Toggle Switch Bar */}
+      <div className="flex items-center justify-between px-4 py-2 bg-slate-950 border-b border-slate-800 text-xs flex-shrink-0">
+        <span className="text-slate-400 font-medium">Tutor Style:</span>
+        <button
+          type="button"
+          onClick={() => setIsDirectMode(prev => !prev)}
+          className={`px-3 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
+            isDirectMode 
+              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' 
+              : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+          }`}
+        >
+          {isDirectMode ? "💡 Direct Explanation Active" : "🧠 Socratic Mode Active"}
         </button>
       </div>
 

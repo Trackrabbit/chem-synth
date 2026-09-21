@@ -15,6 +15,14 @@ import Footer from './components/Footer';
 import HelpModal from './components/HelpModal'; 
 import periodicTableData from './data/periodicTable.json';
 import alchemyData from './data/alchemyData.json';
+import QuizModal from './components/QuizModal';
+
+// --- Procedural Ambient Audio Controller Component ---
+const AppAudioController = ({ audioEnabled, appMode }) => {
+  // Call useSound directly with the active mode so the hook manages the ambient loops
+  useSound(audioEnabled, appMode);
+  return null;
+};
 
 export default function App() {
   const { user } = useAuth();
@@ -42,6 +50,7 @@ export default function App() {
   const [showHelp, setShowHelp] = useState(false);
   const [theme, setTheme] = useState('default');
   const [isCatastrophicEvent, setIsCatastrophicEvent] = useState(false);
+  const [showQuiz, setShowQuiz] = useState(false);
   
   // Pinning State (Moved to App for global access)
   const [pinnedIntermediates, setPinnedIntermediates] = useState([]);
@@ -307,7 +316,16 @@ export default function App() {
 
   return (
     <div className={`min-h-screen bg-slate-950 text-slate-200 font-sans p-4 flex flex-col items-center pb-20 ${theme === 'uga' ? 'theme-uga' : ''}`}>
-      <Header audioEnabled={audioEnabled} setAudioEnabled={setAudioEnabled} setShowTutor={setShowTutor} setShowResetModal={setShowResetModal} onOpenRecipeLog={() => setShowRecipeLog(true)} setShowHelp={setShowHelp} />
+      <AppAudioController audioEnabled={audioEnabled} appMode={appMode} />
+      <Header 
+        audioEnabled={audioEnabled} 
+        setAudioEnabled={setAudioEnabled} 
+        setShowTutor={setShowTutor} 
+        setShowResetModal={setShowResetModal} 
+        onOpenRecipeLog={() => setShowRecipeLog(true)} 
+        setShowHelp={setShowHelp}
+        setShowQuiz={setShowQuiz} 
+      />
       <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-8 flex-1">
         <Workbench 
             inventory={baseElements} 
@@ -327,9 +345,36 @@ export default function App() {
             togglePin={togglePin}
         />
       </div>
-      <ModalManager appMode={appMode} inventory={fullInventory} showResetModal={showResetModal} setShowResetModal={setShowResetModal} handleReset={handleReset} showDiscovery={showDiscovery} setShowDiscovery={setShowDiscovery} discoveredElement={discoveredElement} showRecipeLog={showRecipeLog} setShowRecipeLog={setShowRecipeLog} showDuplicateModal={showDuplicateModal} setShowDuplicateModal={setShowDuplicateModal} knownDuplicate={knownDuplicate} executeMix={executeMix}/>
-      <TutorDrawer isOpen={showTutor} onClose={() => setShowTutor(false)} workbenchState={{ slot1, slot2, slot1Qty, slot2Qty, applyHeat, applyPressure, appMode }} />
-      <HelpModal isOpen={showHelp} onClose={() => setShowHelp(false)} />
+      <ModalManager 
+        appMode={appMode} 
+        inventory={fullInventory} 
+        showResetModal={showResetModal} 
+        setShowResetModal={setShowResetModal} 
+        handleReset={handleReset} 
+        showDiscovery={showDiscovery} 
+        setShowDiscovery={setShowDiscovery} 
+        discoveredElement={discoveredElement} 
+        showRecipeLog={showRecipeLog} 
+        setShowRecipeLog={setShowRecipeLog} 
+        showDuplicateModal={showDuplicateModal} 
+        setShowDuplicateModal={setShowDuplicateModal} 
+        knownDuplicate={knownDuplicate} 
+        executeMix={executeMix}
+      />
+      <TutorDrawer 
+        isOpen={showTutor} 
+        onClose={() => setShowTutor(false)} 
+        workbenchState={{ slot1, slot2, slot1Qty, slot2Qty, applyHeat, applyPressure, appMode }} 
+      />
+      <HelpModal 
+        isOpen={showHelp} 
+        onClose={() => setShowHelp(false)} 
+      />
+      <QuizModal 
+        isOpen={showQuiz} 
+        onClose={() => setShowQuiz(false)} 
+        user={user} 
+      />
       <div className={`fixed inset-0 bg-white pointer-events-none z-[100] transition-opacity duration-150 ${isFlashing ? 'opacity-80' : 'opacity-0'}`} />
       
       {isCatastrophicEvent && (

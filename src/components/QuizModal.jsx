@@ -176,7 +176,20 @@ export default function QuizModal({ isOpen, onClose, user }) {
 
             {/* Immediate Explanation Box */}
             {hasAnsweredCurrent && (
-              <div className="mb-6 p-4 rounded-xl bg-slate-950/50 border border-slate-700/50 text-sm text-cyan-100">
+              <div className={`mb-6 p-4 rounded-xl bg-slate-950/50 border text-sm ${
+                selectedAnswers[currentIndex] === questions[currentIndex].correctIndex 
+                  ? 'border-emerald-500/50 text-emerald-50' 
+                  : 'border-red-500/50 text-red-50'
+              }`}>
+                <div className={`font-bold mb-2 text-base ${
+                  selectedAnswers[currentIndex] === questions[currentIndex].correctIndex 
+                    ? 'text-emerald-400' 
+                    : 'text-red-400'
+                }`}>
+                  {selectedAnswers[currentIndex] === questions[currentIndex].correctIndex 
+                    ? '✅ Correct!' 
+                    : '❌ Not quite.'}
+                </div>
                 <span className="font-bold text-cyan-400 mr-2">Explanation:</span> 
                 {questions[currentIndex].explanation}
               </div>

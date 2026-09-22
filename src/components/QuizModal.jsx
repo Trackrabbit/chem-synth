@@ -24,7 +24,6 @@ export default function QuizModal({ isOpen, onClose, user }) {
   const [loadingMessage, setLoadingMessage] = useState("");
   const [progressHistory, setProgressHistory] = useState([]);
 
-  // Cycle funny loading messages
   React.useEffect(() => {
     if (!loading) return;
 
@@ -34,23 +33,9 @@ export default function QuizModal({ isOpen, onClose, user }) {
         "Waiting for the reaction to reach equilibrium...",
         "Scrubbing the Erlenmeyer flasks...",
         "Calculating the molar mass of your patience...",
-        "Waking up the chemistry professor...",
         "Double-checking Avogadro's number...",
-        "Brewing more coffee for the 8 AM lecture...",
         "Consulting the periodic table for inspiration...",
-        "Counting the number of protons in your soul...",
-        "Asking the electrons to behave...",
         "Mixing the right amount of curiosity and caffeine...",
-        "Waiting for the lab rats to finish their experiments...",
-        "Calculating the half-life of your attention span...",
-        "Attempting to balance the chemical equations of life...",
-        "Consulting the ghost of Marie Curie for guidance...",
-        "Searching for the elusive noble gas of motivation...",
-        "Asking the molecules to form a conga line...",
-        "Waiting for the chemical reaction to finish its TikTok dance...",
-        "Consulting the periodic table for a pep talk...",
-        "Calculating the pH of your enthusiasm...",
-        "Waiting for the lab equipment to stop judging you...",
         "Walking to Chik-fil-A for a quick study break...",
     ];
     
@@ -65,7 +50,6 @@ export default function QuizModal({ isOpen, onClose, user }) {
     return () => clearInterval(interval);
   }, [loading]);
 
-  // Reset quiz state every time the modal is opened
   React.useEffect(() => {
     if (isOpen) {
       setStep('config');
@@ -78,7 +62,6 @@ export default function QuizModal({ isOpen, onClose, user }) {
     }
   }, [isOpen]);
 
-  // Fetch Firestore history when modal opens or a quiz finishes
   React.useEffect(() => {
     if (isOpen && user) {
       const fetchHistory = async () => {
@@ -96,7 +79,6 @@ export default function QuizModal({ isOpen, onClose, user }) {
     }
   }, [isOpen, user, step]);
 
-  // Group and format history
   const topicsWithData = TOPICS.map(topic => {
     const topicHistory = progressHistory
       .filter(r => r.topic === topic)
@@ -107,37 +89,46 @@ export default function QuizModal({ isOpen, onClose, user }) {
 
   if (!isOpen) return null;
 
+  const fetchQuestionBatch = async (batchCount) => {
+    const res = await fetch('https://chem-synth-worker.ajamespage.workers.dev/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'quiz', topic: selectedTopic, count: batchCount })
+    });
+    
+    const contentType = res.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      const rawText = await res.text();
+      throw new Error(`Server Error: ${rawText.substring(0, 50)}...`);
+    }
+
+    const data = await res.json();
+    if (data.error) throw new Error(`Worker Error: ${data.error}`);
+    if (!Array.isArray(data)) throw new Error("Invalid quiz data received");
+    return data;
+  };
+
   const startQuiz = async () => {
     setLoading(true);
     try {
-      const res = await fetch('https://chem-synth-worker.ajamespage.workers.dev/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mode: 'quiz', topic: selectedTopic, count: questionCount })
-      });
-      
-      const contentType = res.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        const rawText = await res.text();
-        if (res.status === 524) {
-          throw new Error("Timeout: The AI server took too long to generate the questions. Try selecting 5 questions instead or wait a bit longer.");
-        }
-        throw new Error(`Server Error: ${rawText.substring(0, 50)}...`);
-      }
+      // Chunk requests into batches of 3 to prevent Cloudflare truncation
+      const batchSize = 3; 
+      const numBatches = Math.ceil(questionCount / batchSize);
+      let allQuestions = [];
 
-      const data = await res.json();
-      
-      if (data.error) throw new Error(`Worker Error: ${data.error}`);
-      
-      if (Array.isArray(data)) {
-        setQuestions(data);
-        setCurrentIndex(0);
-        setSelectedAnswers({});
-        setHasAnsweredCurrent(false);
-        setStep('quiz');
-      } else {
-        throw new Error("Invalid quiz data received");
+      for (let i = 0; i < numBatches; i++) {
+        const remaining = questionCount - allQuestions.length;
+        const currentBatchCount = Math.min(batchSize, remaining);
+        
+        const batch = await fetchQuestionBatch(currentBatchCount);
+        allQuestions = [...allQuestions, ...batch];
       }
+      
+      setQuestions(allQuestions);
+      setCurrentIndex(0);
+      setSelectedAnswers({});
+      setHasAnsweredCurrent(false);
+      setStep('quiz');
     } catch (err) {
       console.error(err);
       alert(err.message);
@@ -258,10 +249,9 @@ export default function QuizModal({ isOpen, onClose, user }) {
                 topicsWithData.map(({ topic, history }) => {
                   const currentAvg = Math.round(history.reduce((sum, r) => sum + r.percentage, 0) / history.length);
                   
-                  // Generate points for the sparkline path
                   const polylinePoints = history.map((record, idx) => {
                     const x = history.length === 1 ? 50 : (idx / (history.length - 1)) * 100;
-                    const y = 100 - (record.percentage * 0.8 + 10); // Pad top/bottom slightly
+                    const y = 100 - (record.percentage * 0.8 + 10);
                     return `${x},${y}`;
                   }).join(' ');
                   
@@ -274,9 +264,7 @@ export default function QuizModal({ isOpen, onClose, user }) {
                         </p>
                       </div>
                       
-                      {/* SVG Sparkline */}
                       <div className="relative h-16 w-full mt-4 mb-2">
-                        {/* 80% Target Line */}
                         <div className="absolute w-full border-t border-dashed border-emerald-500/30" style={{ top: '26%' }}></div>
                         <span className="absolute text-[8px] text-emerald-500/50 -mt-3 right-0">80%</span>
 
@@ -284,7 +272,7 @@ export default function QuizModal({ isOpen, onClose, user }) {
                           <polyline
                             points={polylinePoints}
                             fill="none"
-                            stroke="#0ea5e9" // cyan-500 equivalent
+                            stroke="#0ea5e9"
                             strokeWidth="2"
                             vectorEffect="non-scaling-stroke"
                             strokeLinecap="round"
@@ -305,7 +293,6 @@ export default function QuizModal({ isOpen, onClose, user }) {
                           })}
                         </svg>
 
-                        {/* Tooltip Hover Columns */}
                         <div className="absolute inset-0 flex justify-between">
                           {history.map((record, idx) => (
                             <div key={idx} className="group relative flex-1 h-full z-10 cursor-crosshair">

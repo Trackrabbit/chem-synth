@@ -64,6 +64,18 @@ export default function QuizModal({ isOpen, onClose, user }) {
     return () => clearInterval(interval);
   }, [loading]);
 
+  React.useEffect(() => {
+    if (isOpen) {
+      setStep('config');
+      setQuestions([]);
+      setCurrentIndex(0);
+      setSelectedAnswers({});
+      setScore(0);
+      setHasAnsweredCurrent(false);
+      setLoading(false);
+    }
+  }, [isOpen]);
+  
   if (!isOpen) return null;
 
     const startQuiz = async () => {

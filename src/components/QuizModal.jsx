@@ -10,7 +10,7 @@ const TOPICS = [
 ];
 
 export default function QuizModal({ isOpen, onClose, user }) {
-  const [step, setStep] = useState('config'); // 'config' | 'quiz' | 'results'
+  const [step, setStep] = useState('config'); // 'config' | 'quiz' | 'results' | 'stats'
   const [selectedTopic, setSelectedTopic] = useState(TOPICS[0]);
   const [questionCount, setQuestionCount] = useState(5);
   const [loading, setLoading] = useState(false);
@@ -21,9 +21,10 @@ export default function QuizModal({ isOpen, onClose, user }) {
   const [score, setScore] = useState(0);
   
   const [hasAnsweredCurrent, setHasAnsweredCurrent] = useState(false);
-
   const [loadingMessage, setLoadingMessage] = useState("");
+  const [progressHistory, setProgressHistory] = useState([]);
 
+  // Cycle funny loading messages
   React.useEffect(() => {
     if (!loading) return;
 
@@ -59,11 +60,12 @@ export default function QuizModal({ isOpen, onClose, user }) {
     const interval = setInterval(() => {
       i = (i + 1) % messages.length;
       setLoadingMessage(messages[i]);
-    }, 2500); // Cycles every 2.5 seconds
+    }, 3500); // Cycles every 3.5 seconds
 
     return () => clearInterval(interval);
   }, [loading]);
 
+  // Reset quiz state every time the modal is opened
   React.useEffect(() => {
     if (isOpen) {
       setStep('config');
@@ -75,10 +77,28 @@ export default function QuizModal({ isOpen, onClose, user }) {
       setLoading(false);
     }
   }, [isOpen]);
-  
+
+  // Fetch Firestore history when modal opens or a quiz finishes
+  React.useEffect(() => {
+    if (isOpen && user) {
+      const fetchHistory = async () => {
+        const statsRef = doc(db, 'users', user.uid, 'stats', 'quiz_progress');
+        try {
+          const snap = await getDoc(statsRef);
+          if (snap.exists() && snap.data().history) {
+            setProgressHistory(snap.data().history.reverse());
+          }
+        } catch (e) {
+          console.error("Error fetching history:", e);
+        }
+      };
+      fetchHistory();
+    }
+  }, [isOpen, user, step]);
+
   if (!isOpen) return null;
 
-    const startQuiz = async () => {
+  const startQuiz = async () => {
     setLoading(true);
     try {
       const res = await fetch('https://chem-synth-worker.ajamespage.workers.dev/', {
@@ -87,12 +107,11 @@ export default function QuizModal({ isOpen, onClose, user }) {
         body: JSON.stringify({ mode: 'quiz', topic: selectedTopic, count: questionCount })
       });
       
-      // 1. Check if Cloudflare threw a raw text error (like 524 Timeout)
       const contentType = res.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
         const rawText = await res.text();
         if (res.status === 524) {
-          throw new Error("Timeout: The AI took too long to generate the questions. Try selecting 5 questions instead.");
+          throw new Error("Timeout: The AI server took too long to generate the questions. Try selecting 5 questions instead or wait a bit longer.");
         }
         throw new Error(`Server Error: ${rawText.substring(0, 50)}...`);
       }
@@ -119,10 +138,9 @@ export default function QuizModal({ isOpen, onClose, user }) {
   };
 
   const handleAnswerSelect = (optionIndex) => {
-    if (hasAnsweredCurrent) return; // Prevent changing answer after feedback is shown
-    
+    if (hasAnsweredCurrent) return; 
     setSelectedAnswers({ ...selectedAnswers, [currentIndex]: optionIndex });
-    setHasAnsweredCurrent(true); // Trigger immediate feedback UI
+    setHasAnsweredCurrent(true); 
   };
 
   const handleNext = () => {
@@ -169,7 +187,18 @@ export default function QuizModal({ isOpen, onClose, user }) {
 
         {step === 'config' && (
           <div>
-            <h2 className="text-2xl font-bold mb-4 text-cyan-400">CHEM 1211 Fundamentals</h2>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-cyan-400">CHEM 1211 Quizinator</h2>
+              {user && progressHistory.length > 0 && (
+                <button 
+                  onClick={() => setStep('stats')} 
+                  className="text-xs font-bold text-slate-400 hover:text-cyan-400 transition bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-700"
+                >
+                  📊 View History
+                </button>
+              )}
+            </div>
+            
             <label className="block mb-2 text-sm text-slate-400">Select Study Area:</label>
             <select 
               value={selectedTopic} 
@@ -209,6 +238,43 @@ export default function QuizModal({ isOpen, onClose, user }) {
           </div>
         )}
 
+        {step === 'stats' && (
+          <div>
+            <h2 className="text-xl font-bold mb-6 text-cyan-400 border-b border-slate-700 pb-2">Study History</h2>
+            
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2 mb-6">
+              {progressHistory.map((record, idx) => {
+                const date = new Date(record.timestamp);
+                const passed = record.percentage >= 80;
+                
+                return (
+                  <div key={idx} className="bg-slate-950/50 border border-slate-700/50 p-4 rounded-xl flex justify-between items-center">
+                    <div>
+                      <p className="font-bold text-slate-200 text-sm">{record.topic}</p>
+                      <p className="text-xs text-slate-500 mt-1">
+                        {date.toLocaleDateString()} at {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className={`font-black text-lg ${passed ? 'text-emerald-400' : 'text-amber-400'}`}>
+                        {Math.round(record.percentage)}%
+                      </p>
+                      <p className="text-xs text-slate-400">{record.score} / {record.total}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={() => setStep('config')}
+              className="w-full bg-slate-800 py-3 rounded-xl font-bold text-slate-300 shadow-lg hover:bg-slate-700 transition"
+            >
+              Back to Setup
+            </button>
+          </div>
+        )}
+
         {step === 'quiz' && questions.length > 0 && (
           <div>
             <div className="flex justify-between text-xs text-slate-400 mb-2">
@@ -219,16 +285,15 @@ export default function QuizModal({ isOpen, onClose, user }) {
             
             <div className="space-y-3 mb-6">
               {questions[currentIndex].options.map((opt, idx) => {
-                // Immediate feedback styling logic
                 let btnStyle = 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-750';
                 
                 if (hasAnsweredCurrent) {
                   if (idx === questions[currentIndex].correctIndex) {
-                    btnStyle = 'bg-emerald-950 border-emerald-500 text-emerald-200'; // Highlight correct answer
+                    btnStyle = 'bg-emerald-950 border-emerald-500 text-emerald-200'; 
                   } else if (idx === selectedAnswers[currentIndex]) {
-                    btnStyle = 'bg-red-950 border-red-500 text-red-300 line-through'; // Cross out wrong guess
+                    btnStyle = 'bg-red-950 border-red-500 text-red-300 line-through'; 
                   } else {
-                    btnStyle = 'bg-slate-800 border-slate-700 text-slate-500 opacity-50'; // Dim others
+                    btnStyle = 'bg-slate-800 border-slate-700 text-slate-500 opacity-50'; 
                   }
                 }
 
@@ -245,7 +310,6 @@ export default function QuizModal({ isOpen, onClose, user }) {
               })}
             </div>
 
-            {/* Immediate Explanation Box */}
             {hasAnsweredCurrent && (
               <div className={`mb-6 p-4 rounded-xl bg-slate-950/50 border text-sm ${
                 selectedAnswers[currentIndex] === questions[currentIndex].correctIndex 
@@ -284,7 +348,6 @@ export default function QuizModal({ isOpen, onClose, user }) {
           </div>
         )}
 
-        {/* Keeping the detailed review at the end for repetition */}
         {step === 'results' && (
           <div className="py-2 max-h-[80vh] overflow-y-auto custom-scrollbar pr-2">
             <div className="text-center mb-8">

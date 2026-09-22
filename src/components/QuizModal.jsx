@@ -60,7 +60,7 @@ export default function QuizModal({ isOpen, onClose, user }) {
     const interval = setInterval(() => {
       i = (i + 1) % messages.length;
       setLoadingMessage(messages[i]);
-    }, 3500); // Cycles every 3.5 seconds
+    }, 3500); 
 
     return () => clearInterval(interval);
   }, [loading]);
@@ -96,12 +96,12 @@ export default function QuizModal({ isOpen, onClose, user }) {
     }
   }, [isOpen, user, step]);
 
-  // Group and format history for sparklines (left-to-right chronological order)
+  // Group and format history
   const topicsWithData = TOPICS.map(topic => {
     const topicHistory = progressHistory
       .filter(r => r.topic === topic)
-      .reverse() // progressHistory is newest-first; reverse to oldest-first for the graph
-      .slice(-15); // Keep the 15 most recent attempts
+      .reverse() 
+      .slice(-15); 
     return { topic, history: topicHistory };
   }).filter(t => t.history.length > 0);
 
@@ -258,35 +258,66 @@ export default function QuizModal({ isOpen, onClose, user }) {
                 topicsWithData.map(({ topic, history }) => {
                   const currentAvg = Math.round(history.reduce((sum, r) => sum + r.percentage, 0) / history.length);
                   
+                  // Generate points for the sparkline path
+                  const polylinePoints = history.map((record, idx) => {
+                    const x = history.length === 1 ? 50 : (idx / (history.length - 1)) * 100;
+                    const y = 100 - (record.percentage * 0.8 + 10); // Pad top/bottom slightly
+                    return `${x},${y}`;
+                  }).join(' ');
+                  
                   return (
                     <div key={topic} className="bg-slate-950/50 border border-slate-700/50 p-4 rounded-xl">
-                      <div className="flex justify-between items-end mb-4">
+                      <div className="flex justify-between items-end mb-2">
                         <p className="font-bold text-slate-200 text-sm">{topic}</p>
                         <p className="text-xs text-slate-400">
                           Avg: <span className={`font-bold ${currentAvg >= 80 ? 'text-emerald-400' : 'text-amber-400'}`}>{currentAvg}%</span>
                         </p>
                       </div>
                       
-                      {/* Flexbox Sparkline Graph */}
-                      <div className="flex items-end gap-1.5 h-16 w-full border-b border-slate-800">
-                        {history.map((record, idx) => {
-                          const passed = record.percentage >= 80;
-                          return (
-                            <div key={idx} className="group relative flex-1 flex flex-col justify-end h-full">
-                              {/* Hover Tooltip */}
-                              <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-2 py-1 rounded pointer-events-none whitespace-nowrap z-10 transition-opacity drop-shadow-md border border-slate-600">
+                      {/* SVG Sparkline */}
+                      <div className="relative h-16 w-full mt-4 mb-2">
+                        {/* 80% Target Line */}
+                        <div className="absolute w-full border-t border-dashed border-emerald-500/30" style={{ top: '26%' }}></div>
+                        <span className="absolute text-[8px] text-emerald-500/50 -mt-3 right-0">80%</span>
+
+                        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full overflow-visible">
+                          <polyline
+                            points={polylinePoints}
+                            fill="none"
+                            stroke="#0ea5e9" // cyan-500 equivalent
+                            strokeWidth="2"
+                            vectorEffect="non-scaling-stroke"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                          {history.map((record, idx) => {
+                            const x = history.length === 1 ? 50 : (idx / (history.length - 1)) * 100;
+                            const y = 100 - (record.percentage * 0.8 + 10);
+                            const passed = record.percentage >= 80;
+                            return (
+                              <circle 
+                                key={idx} 
+                                cx={x} cy={y} r="3" 
+                                fill={passed ? "#10b981" : "#f59e0b"} 
+                                vectorEffect="non-scaling-stroke"
+                              />
+                            )
+                          })}
+                        </svg>
+
+                        {/* Tooltip Hover Columns */}
+                        <div className="absolute inset-0 flex justify-between">
+                          {history.map((record, idx) => (
+                            <div key={idx} className="group relative flex-1 h-full z-10 cursor-crosshair">
+                              <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-cyan-50 text-[10px] font-bold px-2 py-1 rounded pointer-events-none whitespace-nowrap transition-opacity shadow-lg border border-slate-600 z-50">
                                 {Math.round(record.percentage)}%
                               </div>
-                              {/* Graph Bar */}
-                              <div 
-                                style={{ height: `${Math.max(record.percentage, 4)}%` }} 
-                                className={`w-full rounded-t-sm transition-all duration-300 ${passed ? 'bg-emerald-500/80 hover:bg-emerald-400' : 'bg-amber-500/80 hover:bg-amber-400'}`}
-                              ></div>
                             </div>
-                          );
-                        })}
+                          ))}
+                        </div>
                       </div>
-                      <div className="flex justify-between text-[9px] text-slate-500 mt-1 uppercase tracking-wider">
+
+                      <div className="flex justify-between text-[9px] text-slate-500 uppercase tracking-wider mt-1">
                         <span>Older</span>
                         <span>Recent</span>
                       </div>

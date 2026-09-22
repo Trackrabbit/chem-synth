@@ -96,6 +96,15 @@ export default function QuizModal({ isOpen, onClose, user }) {
     }
   }, [isOpen, user, step]);
 
+  // Group and format history for sparklines (left-to-right chronological order)
+  const topicsWithData = TOPICS.map(topic => {
+    const topicHistory = progressHistory
+      .filter(r => r.topic === topic)
+      .reverse() // progressHistory is newest-first; reverse to oldest-first for the graph
+      .slice(-15); // Keep the 15 most recent attempts
+    return { topic, history: topicHistory };
+  }).filter(t => t.history.length > 0);
+
   if (!isOpen) return null;
 
   const startQuiz = async () => {
@@ -240,37 +249,58 @@ export default function QuizModal({ isOpen, onClose, user }) {
 
         {step === 'stats' && (
           <div>
-            <h2 className="text-xl font-bold mb-6 text-cyan-400 border-b border-slate-700 pb-2">Study History</h2>
+            <h2 className="text-xl font-bold mb-6 text-cyan-400 border-b border-slate-700 pb-2">Topic Progress Tracker</h2>
             
-            <div className="space-y-3 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2 mb-6">
-              {progressHistory.map((record, idx) => {
-                const date = new Date(record.timestamp);
-                const passed = record.percentage >= 80;
-                
-                return (
-                  <div key={idx} className="bg-slate-950/50 border border-slate-700/50 p-4 rounded-xl flex justify-between items-center">
-                    <div>
-                      <p className="font-bold text-slate-200 text-sm">{record.topic}</p>
-                      <p className="text-xs text-slate-500 mt-1">
-                        {date.toLocaleDateString()} at {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
+            <div className="space-y-6 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2 mb-6">
+              {topicsWithData.length === 0 ? (
+                <p className="text-slate-400 text-sm text-center py-4">No quiz history available yet.</p>
+              ) : (
+                topicsWithData.map(({ topic, history }) => {
+                  const currentAvg = Math.round(history.reduce((sum, r) => sum + r.percentage, 0) / history.length);
+                  
+                  return (
+                    <div key={topic} className="bg-slate-950/50 border border-slate-700/50 p-4 rounded-xl">
+                      <div className="flex justify-between items-end mb-4">
+                        <p className="font-bold text-slate-200 text-sm">{topic}</p>
+                        <p className="text-xs text-slate-400">
+                          Avg: <span className={`font-bold ${currentAvg >= 80 ? 'text-emerald-400' : 'text-amber-400'}`}>{currentAvg}%</span>
+                        </p>
+                      </div>
+                      
+                      {/* Flexbox Sparkline Graph */}
+                      <div className="flex items-end gap-1.5 h-16 w-full border-b border-slate-800">
+                        {history.map((record, idx) => {
+                          const passed = record.percentage >= 80;
+                          return (
+                            <div key={idx} className="group relative flex-1 flex flex-col justify-end h-full">
+                              {/* Hover Tooltip */}
+                              <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-2 py-1 rounded pointer-events-none whitespace-nowrap z-10 transition-opacity drop-shadow-md border border-slate-600">
+                                {Math.round(record.percentage)}%
+                              </div>
+                              {/* Graph Bar */}
+                              <div 
+                                style={{ height: `${Math.max(record.percentage, 4)}%` }} 
+                                className={`w-full rounded-t-sm transition-all duration-300 ${passed ? 'bg-emerald-500/80 hover:bg-emerald-400' : 'bg-amber-500/80 hover:bg-amber-400'}`}
+                              ></div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <div className="flex justify-between text-[9px] text-slate-500 mt-1 uppercase tracking-wider">
+                        <span>Older</span>
+                        <span>Recent</span>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className={`font-black text-lg ${passed ? 'text-emerald-400' : 'text-amber-400'}`}>
-                        {Math.round(record.percentage)}%
-                      </p>
-                      <p className="text-xs text-slate-400">{record.score} / {record.total}</p>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
 
             <button
               onClick={() => setStep('config')}
               className="w-full bg-slate-800 py-3 rounded-xl font-bold text-slate-300 shadow-lg hover:bg-slate-700 transition"
             >
-              Back to Setup
+              Back to Quizinator
             </button>
           </div>
         )}

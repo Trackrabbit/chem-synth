@@ -22,9 +22,51 @@ export default function QuizModal({ isOpen, onClose, user }) {
   
   const [hasAnsweredCurrent, setHasAnsweredCurrent] = useState(false);
 
+  const [loadingMessage, setLoadingMessage] = useState("");
+
+  React.useEffect(() => {
+    if (!loading) return;
+
+    const messages = [
+        "Bribing the lab TA...",
+        "Searching for the limiting reagent...",
+        "Waiting for the reaction to reach equilibrium...",
+        "Scrubbing the Erlenmeyer flasks...",
+        "Calculating the molar mass of your patience...",
+        "Waking up the chemistry professor...",
+        "Double-checking Avogadro's number...",
+        "Brewing more coffee for the 8 AM lecture...",
+        "Consulting the periodic table for inspiration...",
+        "Counting the number of protons in your soul...",
+        "Asking the electrons to behave...",
+        "Mixing the right amount of curiosity and caffeine...",
+        "Waiting for the lab rats to finish their experiments...",
+        "Calculating the half-life of your attention span...",
+        "Attempting to balance the chemical equations of life...",
+        "Consulting the ghost of Marie Curie for guidance...",
+        "Searching for the elusive noble gas of motivation...",
+        "Asking the molecules to form a conga line...",
+        "Waiting for the chemical reaction to finish its TikTok dance...",
+        "Consulting the periodic table for a pep talk...",
+        "Calculating the pH of your enthusiasm...",
+        "Waiting for the lab equipment to stop judging you...",
+        "Walking to Chik-fil-A for a quick study break...",
+    ];
+    
+    let i = Math.floor(Math.random() * messages.length);
+    setLoadingMessage(messages[i]);
+    
+    const interval = setInterval(() => {
+      i = (i + 1) % messages.length;
+      setLoadingMessage(messages[i]);
+    }, 2500); // Cycles every 2.5 seconds
+
+    return () => clearInterval(interval);
+  }, [loading]);
+
   if (!isOpen) return null;
 
-  const startQuiz = async () => {
+    const startQuiz = async () => {
     setLoading(true);
     try {
       const res = await fetch('https://chem-synth-worker.ajamespage.workers.dev/', {
@@ -33,6 +75,16 @@ export default function QuizModal({ isOpen, onClose, user }) {
         body: JSON.stringify({ mode: 'quiz', topic: selectedTopic, count: questionCount })
       });
       
+      // 1. Check if Cloudflare threw a raw text error (like 524 Timeout)
+      const contentType = res.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const rawText = await res.text();
+        if (res.status === 524) {
+          throw new Error("Timeout: The AI took too long to generate the questions. Try selecting 5 questions instead.");
+        }
+        throw new Error(`Server Error: ${rawText.substring(0, 50)}...`);
+      }
+
       const data = await res.json();
       
       if (data.error) throw new Error(`Worker Error: ${data.error}`);
@@ -131,9 +183,16 @@ export default function QuizModal({ isOpen, onClose, user }) {
             <button
               onClick={startQuiz}
               disabled={loading}
-              className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 py-3 rounded-xl font-bold text-white shadow-lg hover:opacity-90 transition"
+              className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 rounded-xl font-bold text-white shadow-lg hover:opacity-90 transition flex flex-col items-center justify-center min-h-[56px] py-2"
             >
-              {loading ? "Generating Quiz..." : "Launch Quiz"}
+              {loading ? (
+                <>
+                  <span className="text-sm font-semibold opacity-90 animate-pulse">Synthesizing Questions...</span>
+                  <span className="text-xs font-normal italic text-cyan-200 mt-0.5">{loadingMessage}</span>
+                </>
+              ) : (
+                <span className="text-base py-1">Launch Quiz</span>
+              )}
             </button>
           </div>
         )}

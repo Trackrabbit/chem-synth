@@ -1,19 +1,16 @@
 import React, { useState } from 'react';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion } from 'firebase/firestore';
 import { db } from '../firebase';
+import quizBank from '../data/quizBank.json';
 
-const TOPICS = [
-  "Element Names & Symbols",
-  "Atomic Structure (Protons, Neutrons, Electrons)",
-  "Ions, Isotopes & Charges",
-  "Basic Chemical Bonding & Formulas"
-];
+const CURRENT_TOPICS = Object.keys(quizBank);
+const DIFFICULTIES = ["Easy", "Intermediate", "Hard", "All"];
 
 export default function QuizModal({ isOpen, onClose, user }) {
-  const [step, setStep] = useState('config'); // 'config' | 'quiz' | 'results' | 'stats'
-  const [selectedTopic, setSelectedTopic] = useState(TOPICS[0]);
+  const [step, setStep] = useState('config');
+  const [selectedTopic, setSelectedTopic] = useState(CURRENT_TOPICS[0]);
+  const [selectedDifficulty, setSelectedDifficulty] = useState("All");
   const [questionCount, setQuestionCount] = useState(5);
-  const [loading, setLoading] = useState(false);
   
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -21,34 +18,7 @@ export default function QuizModal({ isOpen, onClose, user }) {
   const [score, setScore] = useState(0);
   
   const [hasAnsweredCurrent, setHasAnsweredCurrent] = useState(false);
-  const [loadingMessage, setLoadingMessage] = useState("");
   const [progressHistory, setProgressHistory] = useState([]);
-
-  React.useEffect(() => {
-    if (!loading) return;
-
-    const messages = [
-        "Bribing the lab TA...",
-        "Searching for the limiting reagent...",
-        "Waiting for the reaction to reach equilibrium...",
-        "Scrubbing the Erlenmeyer flasks...",
-        "Calculating the molar mass of your patience...",
-        "Double-checking Avogadro's number...",
-        "Consulting the periodic table for inspiration...",
-        "Mixing the right amount of curiosity and caffeine...",
-        "Walking to Chik-fil-A for a quick study break...",
-    ];
-    
-    let i = Math.floor(Math.random() * messages.length);
-    setLoadingMessage(messages[i]);
-    
-    const interval = setInterval(() => {
-      i = (i + 1) % messages.length;
-      setLoadingMessage(messages[i]);
-    }, 3500); 
-
-    return () => clearInterval(interval);
-  }, [loading]);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -58,7 +28,6 @@ export default function QuizModal({ isOpen, onClose, user }) {
       setSelectedAnswers({});
       setScore(0);
       setHasAnsweredCurrent(false);
-      setLoading(false);
     }
   }, [isOpen]);
 
@@ -79,7 +48,11 @@ export default function QuizModal({ isOpen, onClose, user }) {
     }
   }, [isOpen, user, step]);
 
-  const topicsWithData = TOPICS.map(topic => {
+  // Combine current quiz bank topics with any legacy topics from the user's history
+  const allHistoricalTopics = progressHistory.map(r => r.topic);
+  const uniqueTopics = Array.from(new Set([...CURRENT_TOPICS, ...allHistoricalTopics]));
+
+  const topicsWithData = uniqueTopics.map(topic => {
     const topicHistory = progressHistory
       .filter(r => r.topic === topic)
       .reverse() 
@@ -89,51 +62,28 @@ export default function QuizModal({ isOpen, onClose, user }) {
 
   if (!isOpen) return null;
 
-  const fetchQuestionBatch = async (batchCount) => {
-    const res = await fetch('https://chem-synth-worker.ajamespage.workers.dev/', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mode: 'quiz', topic: selectedTopic, count: batchCount })
-    });
-    
-    const contentType = res.headers.get("content-type");
-    if (!contentType || !contentType.includes("application/json")) {
-      const rawText = await res.text();
-      throw new Error(`Server Error: ${rawText.substring(0, 50)}...`);
-    }
-
-    const data = await res.json();
-    if (data.error) throw new Error(`Worker Error: ${data.error}`);
-    if (!Array.isArray(data)) throw new Error("Invalid quiz data received");
-    return data;
-  };
-
-  const startQuiz = async () => {
-    setLoading(true);
+  const startQuiz = () => {
     try {
-      // Chunk requests into batches of 3 to prevent Cloudflare truncation
-      const batchSize = 3; 
-      const numBatches = Math.ceil(questionCount / batchSize);
-      let allQuestions = [];
-
-      for (let i = 0; i < numBatches; i++) {
-        const remaining = questionCount - allQuestions.length;
-        const currentBatchCount = Math.min(batchSize, remaining);
-        
-        const batch = await fetchQuestionBatch(currentBatchCount);
-        allQuestions = [...allQuestions, ...batch];
-      }
+      const topicPool = quizBank[selectedTopic] || [];
       
-      setQuestions(allQuestions);
+      const filteredPool = selectedDifficulty === "All" 
+        ? topicPool 
+        : topicPool.filter(q => q.difficulty === selectedDifficulty);
+
+      if (filteredPool.length === 0) {
+        throw new Error(`No ${selectedDifficulty} questions available for this topic. Try another difficulty.`);
+      }
+
+      const shuffled = [...filteredPool].sort(() => 0.5 - Math.random());
+      const selected = shuffled.slice(0, Math.min(questionCount, shuffled.length));
+
+      setQuestions(selected);
       setCurrentIndex(0);
       setSelectedAnswers({});
       setHasAnsweredCurrent(false);
       setStep('quiz');
     } catch (err) {
-      console.error(err);
       alert(err.message);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -162,6 +112,7 @@ export default function QuizModal({ isOpen, onClose, user }) {
         const snap = await getDoc(statsRef);
         const newRecord = {
           topic: selectedTopic,
+          difficulty: selectedDifficulty,
           score: correctCount,
           total: questions.length,
           percentage: (correctCount / questions.length) * 100,
@@ -205,8 +156,21 @@ export default function QuizModal({ isOpen, onClose, user }) {
               onChange={(e) => setSelectedTopic(e.target.value)}
               className="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl mb-4 text-white"
             >
-              {TOPICS.map(t => <option key={t} value={t}>{t}</option>)}
+              {CURRENT_TOPICS.map(t => <option key={t} value={t}>{t}</option>)}
             </select>
+
+            <label className="block mb-2 text-sm text-slate-400">Select Difficulty:</label>
+            <div className="flex gap-2 mb-4">
+              {DIFFICULTIES.map(diff => (
+                <button
+                  key={diff}
+                  onClick={() => setSelectedDifficulty(diff)}
+                  className={`flex-1 py-2 text-sm rounded-xl border transition ${selectedDifficulty === diff ? 'bg-indigo-600 border-indigo-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}`}
+                >
+                  {diff}
+                </button>
+              ))}
+            </div>
 
             <label className="block mb-2 text-sm text-slate-400">Number of Questions:</label>
             <div className="flex gap-4 mb-6">
@@ -214,26 +178,18 @@ export default function QuizModal({ isOpen, onClose, user }) {
                 <button
                   key={num}
                   onClick={() => setQuestionCount(num)}
-                  className={`flex-1 py-2 rounded-xl border ${questionCount === num ? 'bg-cyan-600 border-cyan-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-300'}`}
+                  className={`flex-1 py-2 rounded-xl border transition ${questionCount === num ? 'bg-cyan-600 border-cyan-400 text-white' : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'}`}
                 >
-                  {num} Questions
+                  {num}
                 </button>
               ))}
             </div>
 
             <button
               onClick={startQuiz}
-              disabled={loading}
-              className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 rounded-xl font-bold text-white shadow-lg hover:opacity-90 transition flex flex-col items-center justify-center min-h-[56px] py-2"
+              className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 rounded-xl font-bold text-white shadow-lg hover:opacity-90 transition min-h-[56px] py-2"
             >
-              {loading ? (
-                <>
-                  <span className="text-sm font-semibold opacity-90 animate-pulse">Synthesizing Questions...</span>
-                  <span className="text-xs font-normal italic text-cyan-200 mt-0.5">{loadingMessage}</span>
-                </>
-              ) : (
-                <span className="text-base py-1">Launch Quiz</span>
-              )}
+              Launch Quiz
             </button>
           </div>
         )}
@@ -292,21 +248,6 @@ export default function QuizModal({ isOpen, onClose, user }) {
                             )
                           })}
                         </svg>
-
-                        <div className="absolute inset-0 flex justify-between">
-                          {history.map((record, idx) => (
-                            <div key={idx} className="group relative flex-1 h-full z-10 cursor-crosshair">
-                              <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-cyan-50 text-[10px] font-bold px-2 py-1 rounded pointer-events-none whitespace-nowrap transition-opacity shadow-lg border border-slate-600 z-50">
-                                {Math.round(record.percentage)}%
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="flex justify-between text-[9px] text-slate-500 uppercase tracking-wider mt-1">
-                        <span>Older</span>
-                        <span>Recent</span>
                       </div>
                     </div>
                   );
@@ -326,7 +267,7 @@ export default function QuizModal({ isOpen, onClose, user }) {
         {step === 'quiz' && questions.length > 0 && (
           <div>
             <div className="flex justify-between text-xs text-slate-400 mb-2">
-              <span>Topic: {selectedTopic}</span>
+              <span>Topic: {selectedTopic} ({questions[currentIndex].difficulty})</span>
               <span>Question {currentIndex + 1} of {questions.length}</span>
             </div>
             <h3 className="text-lg font-semibold mb-4 text-white">{questions[currentIndex].prompt}</h3>

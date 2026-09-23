@@ -3,6 +3,21 @@ import path from 'path';
 
 const PUBCHEM_URL = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/periodictable/JSON";
 
+// Dictionary for elements with non-English/Latin-derived symbols
+const ETYMOLOGY = {
+  "Na": "Natrium",
+  "K": "Kalium",
+  "Fe": "Ferrum",
+  "Cu": "Cuprum",
+  "Ag": "Argentum",
+  "Sn": "Stannum",
+  "Sb": "Stibium",
+  "W": "Wolfram",
+  "Au": "Aurum",
+  "Hg": "Hydrargyrum",
+  "Pb": "Plumbum"
+};
+
 function getDifficulty(z, symbol) {
   const easySymbols = ['H','C','N','O','Na','Mg','Al','Si','P','S','Cl','K','Ca','Fe','Cu','Zn','Ag','Au','Hg','Pb','I','Br'];
   if (z <= 20 || easySymbols.includes(symbol)) return "Easy";
@@ -26,7 +41,6 @@ function buildMultipleChoice(prompt, correctAnswer, distractorPool, explanation,
   const filtered = distractorPool.filter(d => String(d) !== String(correctAnswer));
   const selectedDistractors = shuffle(filtered).slice(0, 3);
   
-  // Failsafe in case distractor pool is too small
   while (selectedDistractors.length < 3) {
       selectedDistractors.push(`Invalid Option ${Math.random().toString().substring(2,5)}`);
   }
@@ -44,7 +58,6 @@ function buildMultipleChoice(prompt, correctAnswer, distractorPool, explanation,
   };
 }
 
-// Map PubChem GroupBlocks to standard textbook categories
 function normalizeGroup(block) {
     if (!block) return "Unknown";
     if (block.includes("Alkali metal")) return "Alkali Metal";
@@ -101,16 +114,32 @@ async function generatePubChemQuizBank() {
     const allSymbols = elements.map(e => e.symbol);
     const allNames = elements.map(e => e.name);
     const allGroups = [...new Set(elements.map(e => e.group).filter(g => g !== "Unknown"))];
-    const states = ["Solid", "Liquid", "Gas"];
+    const states = ["Solid", "Liquid", "Gas", "Plasma"];
 
-    // 1. ITERATE ELEMENTS FOR DIRECT FACTS
     elements.forEach(el => {
       const difficulty = getDifficulty(el.z, el.symbol);
+      
+      // Inject Etymology if it exists
+      const etymologyNote = ETYMOLOGY[el.symbol] 
+        ? ` The symbol ${el.symbol} is derived from its historical name, ${ETYMOLOGY[el.symbol]}.` 
+        : "";
 
       // Names & Symbols
       quizBank["Element Names & Symbols"].push(
-        buildMultipleChoice(`What is the elemental symbol for ${el.name}?`, el.symbol, allSymbols, `${el.name} has the atomic symbol ${el.symbol} (Z=${el.z}).`, difficulty),
-        buildMultipleChoice(`Which element is represented by the symbol "${el.symbol}"?`, el.name, allNames, `The symbol ${el.symbol} represents ${el.name}.`, difficulty)
+        buildMultipleChoice(
+            `What is the elemental symbol for ${el.name}?`, 
+            el.symbol, 
+            allSymbols, 
+            `The elemental symbol for ${el.name} is ${el.symbol}. It is element number ${el.z} on the periodic table.${etymologyNote}`, 
+            difficulty
+        ),
+        buildMultipleChoice(
+            `Which element is represented by the symbol "${el.symbol}"?`, 
+            el.name, 
+            allNames, 
+            `On the periodic table, the symbol ${el.symbol} specifically designates the element ${el.name} (Atomic Number: ${el.z}).${etymologyNote}`, 
+            difficulty
+        )
       );
 
       // Atomic Structure
@@ -120,74 +149,121 @@ async function generatePubChemQuizBank() {
       if (neutrons > 0) {
         const numPool = [el.z, roundedMass, neutrons, el.z + 1, neutrons + 1, neutrons - 1, el.z + 2].filter(n => n > 0);
         quizBank["Atomic Structure (Protons, Neutrons, Electrons)"].push(
-          buildMultipleChoice(`A neutral atom of ${el.name} (${el.symbol}) has an atomic mass of ~${roundedMass}. How many neutrons are in its nucleus?`, neutrons, numPool, `Neutrons = Atomic Mass (${roundedMass}) - Protons (${el.z}).`, difficulty)
+          buildMultipleChoice(
+              `A neutral atom of ${el.name} (${el.symbol}) has an atomic mass of ~${roundedMass}. How many neutrons are in its nucleus?`, 
+              neutrons, 
+              numPool, 
+              `To find the number of neutrons, subtract the atomic number (protons, ${el.z}) from the atomic mass (~${roundedMass}). ${roundedMass} - ${el.z} = ${neutrons} neutrons.`, 
+              difficulty
+          )
         );
       }
 
       quizBank["Atomic Structure (Protons, Neutrons, Electrons)"].push(
-        buildMultipleChoice(`How many protons are in a neutral atom of ${el.name} (${el.symbol})?`, el.z, [el.z + 1, el.z - 1, el.z + 2, el.z * 2, el.z], `Atomic number equals proton count (${el.z}).`, difficulty),
-        buildMultipleChoice(`How many electrons orbit a neutral atom of ${el.name}?`, el.z, [el.z + 1, el.z - 1, el.z + 2, el.z * 2, el.z], `Neutral atoms have equal protons and electrons (${el.z}).`, difficulty)
+        buildMultipleChoice(
+            `How many protons are in a neutral atom of ${el.name} (${el.symbol})?`, 
+            el.z, 
+            [el.z + 1, el.z - 1, el.z + 2, el.z * 2, el.z], 
+            `An element's identity is defined by its atomic number, which is exactly equal to the number of protons in its nucleus. For ${el.name}, this is ${el.z}.`, 
+            difficulty
+        ),
+        buildMultipleChoice(
+            `How many electrons orbit a neutral atom of ${el.name}?`, 
+            el.z, 
+            [el.z + 1, el.z - 1, el.z + 2, el.z * 2, el.z], 
+            `In a neutral atom, the positive charge of the protons (${el.z}) must be perfectly balanced by an equal number of negatively charged electrons (${el.z}).`, 
+            difficulty
+        )
       );
 
-      // Classification & States (New Topic)
+      // Classification & States
       if (el.group !== "Unknown") {
           quizBank["Periodic Trends & Classification"].push(
-              buildMultipleChoice(`Which chemical group does ${el.name} belong to?`, el.group, allGroups, `${el.name} is classified as a ${el.group}.`, difficulty)
+              buildMultipleChoice(
+                  `Which chemical group does ${el.name} belong to?`, 
+                  el.group, 
+                  allGroups, 
+                  `Based on its valence electron configuration and position on the periodic table, ${el.name} is classified in the ${el.group} family.`, 
+                  difficulty
+              )
           );
       }
       
       if (el.state === "Solid" || el.state === "Liquid" || el.state === "Gas") {
           quizBank["Periodic Trends & Classification"].push(
-              buildMultipleChoice(`At standard room temperature and pressure, what is the state of matter for ${el.name}?`, el.state, states, `${el.name} naturally occurs as a ${el.state.toLowerCase()}.`, difficulty)
+              buildMultipleChoice(
+                  `At standard room temperature and pressure, what is the state of matter for ${el.name}?`, 
+                  el.state, 
+                  states, 
+                  `At standard room temperature (298 K) and pressure (1 atm), the natural thermodynamic state of ${el.name} is a ${el.state.toLowerCase()}.`, 
+                  difficulty
+              )
           );
       }
     });
 
-    // 2. GENERATE COMPARATIVE QUESTIONS (Mass & Electronegativity)
     for (let i = 0; i < 300; i++) {
-        // Pick 4 random elements
         const selected = shuffle(elements).slice(0, 4);
         
-        // Highest Mass
         const heaviest = selected.reduce((prev, curr) => (prev.mass > curr.mass) ? prev : curr);
         const difficultyHeaviest = selected.some(e => getDifficulty(e.z, e.symbol) === "Hard") ? "Hard" : "Intermediate";
         
         quizBank["Periodic Trends & Classification"].push(
-            buildMultipleChoice(`Which of the following elements has the highest atomic mass?`, heaviest.name, selected.map(e => e.name), `${heaviest.name} has a mass of ${heaviest.mass} amu.`, difficultyHeaviest)
+            buildMultipleChoice(
+                `Which of the following elements has the highest atomic mass?`, 
+                heaviest.name, 
+                selected.map(e => e.name), 
+                `Among these options, ${heaviest.name} is the heaviest with an atomic mass of ${heaviest.mass} amu, meaning it has the most protons and neutrons combined.`, 
+                difficultyHeaviest
+            )
         );
 
-        // Highest Electronegativity
         const enValid = selected.filter(e => e.en !== null);
         if (enValid.length === 4) {
             const mostEN = enValid.reduce((prev, curr) => (prev.en > curr.en) ? prev : curr);
             quizBank["Periodic Trends & Classification"].push(
-                buildMultipleChoice(`Based on periodic trends, which of these elements is the most electronegative?`, mostEN.name, enValid.map(e => e.name), `Electronegativity increases up and to the right on the periodic table.`, "Intermediate")
+                buildMultipleChoice(
+                    `Based on periodic trends, which of these elements is the most electronegative?`, 
+                    mostEN.name, 
+                    enValid.map(e => e.name), 
+                    `Electronegativity (the ability to attract shared electrons) generally increases as you move up and to the right across the periodic table. ${mostEN.name} has the highest value here (${mostEN.en}).`, 
+                    "Intermediate"
+                )
             );
         }
     }
 
-    // 3. GENERATE ALGORITHMIC BONDING QUESTIONS
     const metals = elements.filter(e => e.isMetal);
     const nonmetals = elements.filter(e => !e.isMetal && e.group !== "Noble Gas" && e.group !== "Unknown");
     const bondTypes = ["Ionic", "Covalent", "Metallic", "Hydrogen"];
 
     for (let i = 0; i < 300; i++) {
-        // Generate Ionic pair (Metal + Nonmetal)
         const m = metals[Math.floor(Math.random() * metals.length)];
         const nm = nonmetals[Math.floor(Math.random() * nonmetals.length)];
         const diffIonic = (getDifficulty(m.z, m.symbol) === "Hard" || getDifficulty(nm.z, nm.symbol) === "Hard") ? "Hard" : "Intermediate";
         
         quizBank["Basic Chemical Bonding & Formulas"].push(
-            buildMultipleChoice(`If ${m.name} reacts with ${nm.name}, what primary type of bond will form?`, "Ionic", bondTypes, `A metal (${m.symbol}) and a nonmetal (${nm.symbol}) transfer electrons to form an ionic bond.`, diffIonic)
+            buildMultipleChoice(
+                `If ${m.name} reacts with ${nm.name}, what primary type of bond will form?`, 
+                "Ionic", 
+                bondTypes, 
+                `Ionic bonds typically form between a metal (${m.symbol}) and a nonmetal (${nm.symbol}) due to a large difference in electronegativity, resulting in the complete transfer of electrons.`, 
+                diffIonic
+            )
         );
 
-        // Generate Covalent pair (Nonmetal + Nonmetal)
         const nm1 = nonmetals[Math.floor(Math.random() * nonmetals.length)];
         let nm2 = nonmetals[Math.floor(Math.random() * nonmetals.length)];
         while(nm1.symbol === nm2.symbol) nm2 = nonmetals[Math.floor(Math.random() * nonmetals.length)];
         
         quizBank["Basic Chemical Bonding & Formulas"].push(
-            buildMultipleChoice(`What type of primary bond forms between ${nm1.name} and ${nm2.name}?`, "Covalent", bondTypes, `Two nonmetals (${nm1.symbol}, ${nm2.symbol}) share electrons to form a covalent bond.`, "Intermediate")
+            buildMultipleChoice(
+                `What type of primary bond forms between ${nm1.name} and ${nm2.name}?`, 
+                "Covalent", 
+                bondTypes, 
+                `Covalent bonds form when two nonmetals (${nm1.symbol} and ${nm2.symbol}) share valence electrons to achieve stable electron configurations, as neither is strong enough to completely pull electrons away from the other.`, 
+                "Intermediate"
+            )
         );
     }
 
